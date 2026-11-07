@@ -40,7 +40,7 @@ and an unsigned installer.
 | T-06 | Medium | Open | First connection to an unknown SSH host key is accepted automatically (TOFU) without an explicit fingerprint confirmation. |
 | T-07 | Medium | Open | Plain FTP sends credentials and data unencrypted; FTPS is not implemented. |
 | T-08 | Medium | Open | Dynamic SOCKS5 has no authentication. It binds to `127.0.0.1` by default, but the bind address is editable; `0.0.0.0` creates an open LAN proxy. |
-| T-09 | Medium | Open | NSIS installer and executable are not Authenticode-signed; no signed update channel exists. |
+| T-09 | Medium | Partially mitigated | Binaries now have a locally trusted self-signed Authenticode signature; a public CA certificate and signed update channel are still preferable. |
 | T-10 | Low | Open | DPAPI protects against other Windows users, not against malware running as the same user. Secrets are ordinary Rust `String`s without zeroization. |
 | T-11 | Low | Open | Host names, usernames, snippets, startup commands and known-host metadata are stored unencrypted in SQLite. SSH private keys/passwords/passphrases are sealed. |
 | T-12 | Low | Open | FTP passive mode trusts the address advertised by the server; a malicious FTP server can direct the data connection to another host/port (SSRF/port-scan style behaviour). |
@@ -143,13 +143,15 @@ listen host is a free-form field. Binding to `0.0.0.0` or a LAN interface create
 proxy. Recommended: force dynamic forwards to loopback, or add username/password auth,
 and show a warning whenever a local/dynamic rule binds to a non-loopback address.
 
-### T-09 — Unsigned release artifacts (Medium, open)
+### T-09 — Release artifact signing (Medium, partially mitigated)
 
-The NSIS installer and `terminion.exe` are not Authenticode-signed and there is no signed
-auto-update channel. Users cannot verify publisher identity through Windows beyond the
-file hash you distribute. Recommended: sign the executable/installer with an EV or
-standard code-signing certificate, publish SHA-256 checksums, and sign updates if one is
-added later.
+The executable and NSIS installer are now Authenticode-signed with a **local self-signed
+certificate** (`CN=Terminion Local Code Signing`) and timestamped. The public certificate
+is installed in the current user's Trusted Root and Trusted Publishers stores, and is
+also attached to the private GitHub release. This suppresses publisher-identity warnings
+on this machine; a self-signed certificate does not build SmartScreen reputation, so
+SmartScreen may still warn—especially on other PCs. For wider distribution, use a public
+CA code-signing certificate and sign an update channel if one is added later.
 
 ### T-10 — Same-user malware and memory lifetime (Low, open)
 

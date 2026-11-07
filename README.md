@@ -13,6 +13,11 @@ The latest private build is available under **Releases**:
 - `Terminion_0.1.0_x64-setup.exe` — per-user installer.
 - `Terminion_0.1.0_portable.exe` — portable executable.
 - `SHA256SUMS.txt` — checksums for both files.
+- `Terminion-CodeSigning.cer` — public certificate for the local self-signed signature.
+
+Both binaries are Authenticode-signed and timestamped. This machine already trusts the
+certificate; on a new PC, install the `.cer` into *Trusted Root* and *Trusted Publishers*
+only if you trust it. SmartScreen may still warn because the certificate is self-signed.
 
 ## Why Terminion
 
