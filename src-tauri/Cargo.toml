@@ -1,0 +1,52 @@
+[package]
+name = "terminion"
+version = "0.1.0"
+description = "Terminion — a fast, lightweight SSH & SFTP workspace"
+authors = ["Terminion"]
+edition = "2021"
+rust-version = "1.89"
+
+[lib]
+name = "terminion_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "net", "io-util", "fs", "process"] }
+russh = { version = "0.65", default-features = false, features = ["ring", "rsa", "flate2"] }
+russh-sftp = "3"
+suppaftp = { version = "12", default-features = false, features = ["tokio", "tokio-rustls-ring"] }
+rusqlite = { version = "0.41", features = ["bundled"] }
+base64 = "0.23"
+uuid = { version = "1", features = ["v4"] }
+rand = "0.10"
+socket2 = "0.6"
+dirs = "6"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = [
+  "Win32_Foundation",
+  "Win32_Security_Cryptography",
+  "Win32_System_Diagnostics_ToolHelp",
+  "Win32_System_ProcessStatus",
+  "Win32_System_Threading",
+] }
+webview2-com = "0.39"
+windows-core = "0.62"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true
+panic = "abort"
+
+[profile.dev]
+opt-level = 0
+incremental = true

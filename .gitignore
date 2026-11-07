@@ -1,0 +1,19 @@
+# Dependencies and build output
+node_modules/
+dist/
+.vite/
+src-tauri/target/
+src-tauri/gen/
+
+# Local test data, generated mock server state and host key
+tools/mock/
+tools/*.log
+*.log
+
+# Local env/editor/OS files
+.env
+.env.*
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
