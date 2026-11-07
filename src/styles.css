@@ -934,6 +934,26 @@ code {
   line-height: 13px;
 }
 
+.host-os-tag {
+  font-style: normal;
+  max-width: 105px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 9.5px;
+  color: var(--text-faint);
+  background: var(--hover);
+  border-radius: 4px;
+  padding: 0 4px;
+}
+
+.host-os-pill {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+}
+
 .host-group-tag {
   font-style: normal;
   font-size: 9.5px;

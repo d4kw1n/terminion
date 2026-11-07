@@ -17,6 +17,8 @@ export interface Host {
   port: number;
   username: string;
   protocol: HostProtocol;
+  /// Detected after the first SSH connection: distro/OS label.
+  os: string | null;
   authType: AuthType;
   hasPassword: boolean;
   keyId: number | null;
@@ -29,6 +31,11 @@ export interface Host {
   autoReconnect: boolean;
   createdAt: number;
   lastUsedAt: number | null;
+}
+
+export interface HostOsDetected {
+  hostId: number;
+  os: string;
 }
 
 export interface HostInput {

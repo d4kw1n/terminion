@@ -8,9 +8,13 @@ $root = Split-Path $PSScriptRoot -Parent
 $subject = "CN=Terminion Local Code Signing, O=Terminion"
 $certDirectory = Join-Path $env:LOCALAPPDATA "Terminion\code-signing"
 $publicCertificate = Join-Path $certDirectory "Terminion-CodeSigning.cer"
+$tauriConfig = Get-Content (Join-Path $root "src-tauri\tauri.conf.json") -Raw | ConvertFrom-Json
+$version = $tauriConfig.version
+if (-not $version) { throw "Could not read the application version from tauri.conf.json." }
+$assetBase = "Terminion_${version}"
 $portable = Join-Path $root "src-tauri\target\release\terminion.exe"
-$installer = Join-Path $root "src-tauri\target\release\bundle\nsis\Terminion_0.1.0_x64-setup.exe"
-$portableRelease = Join-Path $root "src-tauri\target\release\bundle\nsis\Terminion_0.1.0_portable.exe"
+$installer = Join-Path $root "src-tauri\target\release\bundle\nsis\${assetBase}_x64-setup.exe"
+$portableRelease = Join-Path $root "src-tauri\target\release\bundle\nsis\${assetBase}_portable.exe"
 $checksums = Join-Path $root "src-tauri\target\release\bundle\nsis\SHA256SUMS.txt"
 
 New-Item -ItemType Directory -Force $certDirectory | Out-Null
@@ -99,7 +103,7 @@ $installerHash = (Get-FileHash $installer -Algorithm SHA256).Hash.ToLower()
 $portableHash = (Get-FileHash $portableRelease -Algorithm SHA256).Hash.ToLower()
 [System.IO.File]::WriteAllText(
     $checksums,
-    "$installerHash  Terminion_0.1.0_x64-setup.exe`n$portableHash  Terminion_0.1.0_portable.exe`n",
+    "$installerHash  ${assetBase}_x64-setup.exe`n$portableHash  ${assetBase}_portable.exe`n",
     [System.Text.Encoding]::ASCII
 )
 

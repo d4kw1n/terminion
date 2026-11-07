@@ -242,6 +242,11 @@ export function HostSidebar() {
               <em className="host-protocol" title="Plain FTP (unencrypted)">FTP</em>
             ) : null}
             {host.username}@{host.hostname}
+            {host.os ? (
+              <em className="host-os-tag" title={host.os}>
+                {host.os}
+              </em>
+            ) : null}
             {showGroup && groupName ? <em className="host-group-tag">{groupName}</em> : null}
           </span>
         </span>

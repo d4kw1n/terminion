@@ -1,6 +1,6 @@
 [package]
 name = "terminion"
-version = "0.1.0"
+version = "0.1.1"
 description = "Terminion — a fast, lightweight SSH & SFTP workspace"
 authors = ["Terminion"]
 edition = "2021"

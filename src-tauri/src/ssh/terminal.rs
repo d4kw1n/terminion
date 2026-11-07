@@ -12,7 +12,9 @@ use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
 use crate::db::Db;
 use crate::models::{Host, KnownHostAdded, Settings, TerminalEvent};
-use crate::ssh::{authenticate, commit_host_key, connect_ssh, host_endpoint, KnownHosts};
+use crate::ssh::{
+    authenticate, commit_host_key, connect_ssh, host_endpoint, maybe_detect_host_os, KnownHosts,
+};
 
 pub enum SessionCommand {
     Write(Vec<u8>),
@@ -40,6 +42,7 @@ struct ConnectedHandles {
     handle: client::Handle<crate::ssh::ClientHandler>,
     channel: Channel<client::Msg>,
     host: Host,
+    auth: crate::models::ResolvedAuth,
     fingerprint: String,
     key_type: String,
     new_key: Option<KnownHostAdded>,
@@ -198,6 +201,7 @@ async fn open_connection(
         handle: conn.handle,
         channel,
         host,
+        auth,
         fingerprint,
         key_type,
         new_key,
@@ -492,6 +496,15 @@ async fn run_session(
                 let new_key = connected.new_key.is_some();
                 if let Some(added) = connected.new_key.clone() {
                     let _ = app.emit("known-host-added", added);
+                }
+                if connected.host.os.is_none() {
+                    maybe_detect_host_os(
+                        connected.host.clone(),
+                        connected.auth.clone(),
+                        known.clone(),
+                        db.clone(),
+                        app.clone(),
+                    );
                 }
                 let fingerprint = connected.fingerprint.clone();
                 let key_type = connected.key_type.clone();

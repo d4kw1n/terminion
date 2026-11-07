@@ -38,6 +38,8 @@ pub struct Host {
     pub username: String,
     /// `ssh` or `ftp`
     pub protocol: String,
+    /// Detected OS/distro, filled after the first successful SSH connection.
+    pub os: Option<String>,
     pub auth_type: String,
     pub has_password: bool,
     pub key_id: Option<i64>,
@@ -336,6 +338,13 @@ pub struct Paths {
     pub downloads: String,
     pub data_dir: String,
     pub ssh_dir: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HostOsDetected {
+    pub host_id: i64,
+    pub os: String,
 }
 
 #[derive(Debug, Clone, Serialize)]

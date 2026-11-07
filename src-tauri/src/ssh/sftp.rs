@@ -15,7 +15,8 @@ use crate::ssh::xfer::{
     collect_local, file_name_of, join_remote, safe_local_path, unique_download_path, Xfer,
 };
 use crate::ssh::{
-    authenticate, commit_host_key, connect_ssh, host_endpoint, ClientHandler, KnownHosts,
+    authenticate, commit_host_key, connect_ssh, host_endpoint, maybe_detect_host_os, ClientHandler,
+    KnownHosts,
 };
 
 const CHUNK: usize = 64 * 1024;
@@ -202,6 +203,15 @@ impl SftpManager {
 
         if let Some(added) = commit_host_key(&self.db, &endpoint, &conn.key_info, &self.known) {
             let _ = self.app.emit("known-host-added", added);
+        }
+        if host.os.is_none() {
+            maybe_detect_host_os(
+                host.clone(),
+                auth.clone(),
+                self.known.clone(),
+                self.db.clone(),
+                self.app.clone(),
+            );
         }
 
         let home = session

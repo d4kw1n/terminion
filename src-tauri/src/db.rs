@@ -7,7 +7,7 @@ use rusqlite::{params, Connection, OptionalExtension, Row};
 use crate::models::*;
 use crate::secret;
 
-const SCHEMA_VERSION: i64 = 2;
+const SCHEMA_VERSION: i64 = 3;
 
 pub struct Db {
     conn: Mutex<Connection>,
@@ -43,6 +43,7 @@ fn host_from_row(row: &Row<'_>) -> rusqlite::Result<Host> {
         protocol: row
             .get::<_, Option<String>>("protocol")?
             .unwrap_or_else(|| "ssh".into()),
+        os: row.get("os")?,
         auth_type: row.get("auth_type")?,
         has_password: password_enc.is_some(),
         key_id: row.get("key_id")?,
@@ -103,6 +104,7 @@ impl Db {
                     port INTEGER NOT NULL DEFAULT 22,
                     username TEXT NOT NULL,
                     protocol TEXT NOT NULL DEFAULT 'ssh',
+                    os TEXT,
                     auth_type TEXT NOT NULL DEFAULT 'password',
                     password_enc TEXT,
                     key_id INTEGER,
@@ -159,6 +161,12 @@ impl Db {
             let _ = conn.execute_batch(
                 "ALTER TABLE hosts ADD COLUMN protocol TEXT NOT NULL DEFAULT 'ssh';",
             );
+            conn.pragma_update(None, "user_version", SCHEMA_VERSION)
+                .map_err(|e| e.to_string())?;
+        }
+        if version > 0 && version < 3 {
+            // OS/distro is detected after the first successful SSH connection.
+            let _ = conn.execute_batch("ALTER TABLE hosts ADD COLUMN os TEXT;");
             conn.pragma_update(None, "user_version", SCHEMA_VERSION)
                 .map_err(|e| e.to_string())?;
         }
@@ -386,7 +394,10 @@ impl Db {
                 let final_enc = password_enc.unwrap_or_else(|| existing.unwrap_or_default());
                 tx.execute(
                     "UPDATE hosts SET label=?1, hostname=?2, port=?3, username=?4,
-                        protocol=?5, auth_type=?6, key_id=?7, group_id=?8, tags=?9, color=?10,
+                        protocol=?5,
+                        os=CASE WHEN hostname=?2 AND port=?3 AND username=?4 AND protocol=?5
+                                THEN os ELSE NULL END,
+                        auth_type=?6, key_id=?7, group_id=?8, tags=?9, color=?10,
                         startup_command=?11, keepalive_secs=?12, auto_reconnect=?13,
                         password_enc=NULLIF(?14, '')
                      WHERE id=?15",
@@ -468,6 +479,16 @@ impl Db {
         conn.execute(
             "UPDATE hosts SET last_used_at = ?1 WHERE id = ?2",
             params![now_ts(), id],
+        )
+        .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub fn set_host_os(&self, id: i64, os: &str) -> DbResult<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "UPDATE hosts SET os = ?1 WHERE id = ?2",
+            params![os.trim(), id],
         )
         .map_err(|e| e.to_string())?;
         Ok(())

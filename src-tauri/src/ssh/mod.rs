@@ -4,8 +4,8 @@ pub mod sftp;
 pub mod terminal;
 pub mod xfer;
 
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::collections::{HashMap, HashSet};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
 use russh::client::{self, Handle};
@@ -13,10 +13,11 @@ use russh::keys::{
     decode_secret_key, HashAlg, PrivateKey, PrivateKeyWithHashAlg, PublicKeyOrCertificate,
 };
 use russh::Channel;
+use tauri::{AppHandle, Emitter};
 use tokio::net::TcpStream;
 
 use crate::db::Db;
-use crate::models::{Host, KnownHostAdded, KnownHostEntry, ResolvedAuth};
+use crate::models::{Host, HostOsDetected, KnownHostAdded, KnownHostEntry, ResolvedAuth};
 
 pub type KnownHosts = Arc<Mutex<HashMap<String, KnownHostEntry>>>;
 
@@ -307,6 +308,240 @@ pub async fn authenticate(
         "This host has no credentials configured. Edit the host and add a password or SSH key."
             .into(),
     )
+}
+
+static OS_DETECTING: OnceLock<Mutex<HashSet<i64>>> = OnceLock::new();
+
+fn clean_os_label(raw: &str) -> String {
+    raw.lines()
+        .next()
+        .unwrap_or_default()
+        .trim()
+        .trim_matches('"')
+        .chars()
+        .filter(|c| !c.is_control())
+        .take(120)
+        .collect()
+}
+
+async fn exec_capture(handle: &Handle<ClientHandler>, command: &str) -> Option<String> {
+    let mut channel = tokio::time::timeout(Duration::from_secs(5), handle.channel_open_session())
+        .await
+        .ok()?
+        .ok()?;
+    tokio::time::timeout(Duration::from_secs(5), channel.exec(true, command))
+        .await
+        .ok()?
+        .ok()?;
+
+    let mut output: Vec<u8> = Vec::with_capacity(1024);
+    let read = async {
+        loop {
+            match channel.wait().await {
+                Some(russh::ChannelMsg::Data { data }) => {
+                    if output.len() < 16 * 1024 {
+                        output.extend_from_slice(&data);
+                    }
+                }
+                Some(russh::ChannelMsg::ExtendedData { data, ext }) if ext == 1 => {
+                    if output.len() < 16 * 1024 {
+                        output.extend_from_slice(&data);
+                    }
+                }
+                Some(russh::ChannelMsg::ExitStatus { .. }) => {}
+                Some(russh::ChannelMsg::Eof) | Some(russh::ChannelMsg::Close) | None => break,
+                _ => {}
+            }
+        }
+    };
+    let _ = tokio::time::timeout(Duration::from_secs(6), read).await;
+    Some(String::from_utf8_lossy(&output).to_string())
+}
+
+async fn detect_linux(handle: &Handle<ClientHandler>) -> Option<String> {
+    let raw = exec_capture(
+        handle,
+        "sh -c 'if [ -r /etc/os-release ]; then cat /etc/os-release; elif [ -r /usr/lib/os-release ]; then cat /usr/lib/os-release; else uname -srm; fi' 2>/dev/null",
+    )
+    .await
+    .unwrap_or_default();
+
+    let (mut pretty, mut name, mut version, mut version_id) = (None, None, None, None);
+    for line in raw.lines() {
+        let Some((key, value)) = line.split_once('=') else {
+            continue;
+        };
+        let value = value.trim().trim_matches('"').to_string();
+        match key.trim() {
+            "PRETTY_NAME" => pretty = Some(value),
+            "NAME" => name = Some(value),
+            "VERSION" => version = Some(value),
+            "VERSION_ID" => version_id = Some(value),
+            _ => {}
+        }
+    }
+    if let Some(pretty) = pretty.filter(|value| !value.is_empty()) {
+        return Some(clean_os_label(&pretty));
+    }
+    if let Some(name) = name.filter(|value| !value.is_empty()) {
+        return Some(
+            match version_id.or(version).filter(|value| !value.is_empty()) {
+                Some(version) => clean_os_label(&format!("{name} {version}")),
+                None => clean_os_label(&name),
+            },
+        );
+    }
+    let fallback = clean_os_label(&raw);
+    let lower = fallback.to_ascii_lowercase();
+    if fallback.is_empty()
+        || lower.contains("not found")
+        || lower.contains("not recognized")
+        || lower.contains("permission denied")
+    {
+        None
+    } else {
+        Some(fallback)
+    }
+}
+
+async fn detect_macos(handle: &Handle<ClientHandler>) -> Option<String> {
+    let name = exec_capture(handle, "sw_vers -productName 2>/dev/null")
+        .await
+        .unwrap_or_default();
+    let version = exec_capture(handle, "sw_vers -productVersion 2>/dev/null")
+        .await
+        .unwrap_or_default();
+    let name = clean_os_label(&name);
+    let version = clean_os_label(&version);
+    if name.is_empty() {
+        let uname = exec_capture(handle, "uname -sr").await?;
+        let label = clean_os_label(&uname);
+        return if label.is_empty() { None } else { Some(label) };
+    }
+    Some(if version.is_empty() {
+        name
+    } else {
+        format!("{name} {version}")
+    })
+}
+
+async fn detect_windows(handle: &Handle<ClientHandler>) -> Option<String> {
+    let caption = exec_capture(
+        handle,
+        "powershell -NoProfile -NonInteractive -Command \"(Get-CimInstance Win32_OperatingSystem).Caption\" 2>NUL",
+    )
+    .await
+    .unwrap_or_default();
+    let caption = clean_os_label(&caption)
+        .trim_start_matches("Microsoft ")
+        .to_string();
+    if !caption.is_empty()
+        && !caption.to_ascii_lowercase().contains("not recognized")
+        && !caption.to_ascii_lowercase().contains("access is denied")
+    {
+        return Some(caption);
+    }
+
+    let version = exec_capture(handle, "cmd /c ver").await.unwrap_or_default();
+    let version = version.trim();
+    if let (Some(start), Some(end)) = (version.find("[Version "), version.find(']')) {
+        if end > start + 9 {
+            return Some(format!("Windows {}", &version[start + 9..end]));
+        }
+    }
+    let first = clean_os_label(version);
+    if first.is_empty() {
+        None
+    } else {
+        Some(first)
+    }
+}
+
+async fn detect_os_via_handle(handle: &Handle<ClientHandler>) -> Option<String> {
+    let uname = exec_capture(handle, "uname -s 2>/dev/null")
+        .await
+        .unwrap_or_default();
+    let lower = uname.to_ascii_lowercase();
+    if lower.contains("linux") {
+        if let Some(os) = detect_linux(handle).await {
+            return Some(os);
+        }
+        let fallback = clean_os_label(&uname);
+        if !fallback.is_empty() {
+            return Some(fallback);
+        }
+    }
+    if lower.contains("darwin") {
+        if let Some(os) = detect_macos(handle).await {
+            return Some(os);
+        }
+    }
+    if lower.contains("bsd") {
+        let raw = exec_capture(handle, "uname -sr").await.unwrap_or_default();
+        let label = clean_os_label(&raw);
+        if !label.is_empty() {
+            return Some(label);
+        }
+    }
+    if lower.contains("mingw") || lower.contains("msys") || lower.contains("cygwin") {
+        if let Some(os) = detect_windows(handle).await {
+            return Some(os);
+        }
+    }
+
+    let first = clean_os_label(&uname);
+    if !first.is_empty()
+        && !first.to_ascii_lowercase().contains("not recognized")
+        && !first.to_ascii_lowercase().contains("command not found")
+    {
+        return Some(first);
+    }
+    detect_windows(handle).await
+}
+
+async fn detect_host_os(host: &Host, auth: &ResolvedAuth, known: KnownHosts) -> Option<String> {
+    let endpoint = host_endpoint(&host.hostname, host.port);
+    let mut conn = connect_ssh(host, host.keepalive_secs, known, None)
+        .await
+        .ok()?;
+    authenticate(&mut conn.handle, auth, &endpoint).await.ok()?;
+    detect_os_via_handle(&conn.handle).await
+}
+
+/// Identify the remote OS/distro once per host in the background.
+pub fn maybe_detect_host_os(
+    host: Host,
+    auth: ResolvedAuth,
+    known: KnownHosts,
+    db: Arc<Db>,
+    app: AppHandle,
+) {
+    if host.protocol != "ssh" || host.os.is_some() {
+        return;
+    }
+    let detecting = OS_DETECTING.get_or_init(|| Mutex::new(HashSet::new()));
+    {
+        let mut set = detecting.lock().unwrap();
+        if !set.insert(host.id) {
+            return;
+        }
+    }
+
+    tokio::spawn(async move {
+        let result = detect_host_os(&host, &auth, known).await;
+        detecting.lock().unwrap().remove(&host.id);
+        if let Some(os) = result {
+            if db.set_host_os(host.id, &os).is_ok() {
+                let _ = app.emit(
+                    "host-os-detected",
+                    HostOsDetected {
+                        host_id: host.id,
+                        os,
+                    },
+                );
+            }
+        }
+    });
 }
 
 /// Persist a newly encountered host key and notify the UI.

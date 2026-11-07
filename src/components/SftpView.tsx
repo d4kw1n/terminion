@@ -742,6 +742,11 @@ export function SftpView({ tab, active, embedded = false, onCollapse }: SftpView
                 {headerStatus}
               </span>
               <span className="pill pill--muted">{fs.label}</span>
+              {host?.os && (
+                <span className="pill pill--muted host-os-pill" title={host.os}>
+                  {host.os}
+                </span>
+              )}
               {fs.unencrypted && <span className="pill pill--warn">unencrypted</span>}
             </div>
             <div className="term-endpoint">

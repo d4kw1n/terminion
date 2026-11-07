@@ -331,6 +331,11 @@ export function TerminalView({
                   {tab.keyType.replace("ssh-", "")}
                 </span>
               )}
+              {host?.os && (
+                <span className="pill pill--muted host-os-pill" title={host.os}>
+                  {host.os}
+                </span>
+              )}
             </div>
             <div className="term-endpoint">
               {host ? `${host.username}@${host.hostname}` : tab.subtitle}

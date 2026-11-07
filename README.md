@@ -10,8 +10,8 @@ to Termius, built with Rust + Tauri and a GPU-rendered terminal.
 The latest private build is available under **Releases**:
 [github.com/d4kw1n/terminion/releases/latest](https://github.com/d4kw1n/terminion/releases/latest)
 
-- `Terminion_0.1.0_x64-setup.exe` — per-user installer.
-- `Terminion_0.1.0_portable.exe` — portable executable.
+- `Terminion_0.1.1_x64-setup.exe` — per-user installer.
+- `Terminion_0.1.1_portable.exe` — portable executable.
 - `SHA256SUMS.txt` — checksums for both files.
 - `Terminion-CodeSigning.cer` — public certificate for the local self-signed signature.
 
@@ -44,6 +44,11 @@ only if you trust it. SmartScreen may still warn because the certificate is self
 - One-click import of `~/.ssh/config`, including identity files.
 - Duplicate, edit, pin, delete, and copy ready-to-use `ssh` commands.
 - Automatic group counts, “last used” ordering hints, and live session indicators.
+- **OS / distro detection:** on the first successful SSH connection, Terminion identifies
+  the remote OS (for example `Ubuntu 24.04.1 LTS`, `Debian GNU/Linux 12`, `macOS 15.1`,
+  or `Windows Server 2022`) and shows it on the host row and terminal header. The
+  result is cached in the local database; editing the hostname, port, user or protocol
+  clears it so the next connection detects the new target.
 
 ### Terminals
 

@@ -18,7 +18,13 @@ import { Welcome } from "./components/Welcome";
 import { api } from "./lib/api";
 import { terminalRegistry } from "./lib/term";
 import { layoutSplitRects } from "./lib/split";
-import type { ForwardStatusEvent, KnownHostAdded, SplitRect, Tab } from "./lib/types";
+import type {
+  ForwardStatusEvent,
+  HostOsDetected,
+  KnownHostAdded,
+  SplitRect,
+  Tab,
+} from "./lib/types";
 import { applyTheme, useStore } from "./store";
 import { isEditableTarget } from "./lib/utils";
 import { ForwardsPage } from "./pages/ForwardsPage";
@@ -191,6 +197,18 @@ export default function App() {
         });
         store.refreshKnownHosts().catch(() => {});
       });
+      const c = await listen<HostOsDetected>("host-os-detected", (event) => {
+        const store = useStore.getState();
+        const host = store.hosts.find((item) => item.id === event.payload.hostId);
+        store.setHostOs(event.payload.hostId, event.payload.os);
+        if (host && !host.os) {
+          store.addToast({
+            type: "info",
+            title: "Host identified",
+            message: `${host.label}: ${event.payload.os}`,
+          });
+        }
+      });
       const b = await listen<ForwardStatusEvent>("forward-status", (event) => {
         const { id, running, error, boundPort } = event.payload;
         useStore.setState((state) => {
@@ -210,8 +228,9 @@ export default function App() {
       if (disposed) {
         a();
         b();
+        c();
       } else {
-        unlisteners.push(a, b);
+        unlisteners.push(a, b, c);
       }
     })();
     return () => {

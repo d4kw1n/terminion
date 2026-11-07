@@ -117,6 +117,7 @@ interface AppStore {
 
   bootstrap: () => Promise<void>;
   refreshHosts: () => Promise<void>;
+  setHostOs: (hostId: number, os: string) => void;
   refreshGroups: () => Promise<void>;
   refreshKeys: () => Promise<void>;
   refreshSnippets: () => Promise<void>;
@@ -289,6 +290,12 @@ export const useStore = create<AppStore>((set, get) => ({
   },
 
   refreshHosts: async () => set({ hosts: await api.listHosts() }),
+  setHostOs: (hostId, os) =>
+    set((state) => ({
+      hosts: state.hosts.map((host) =>
+        host.id === hostId ? { ...host, os } : host,
+      ),
+    })),
   refreshGroups: async () => set({ groups: await api.listGroups() }),
   refreshKeys: async () => set({ keys: await api.listKeys() }),
   refreshSnippets: async () => set({ snippets: await api.listSnippets() }),

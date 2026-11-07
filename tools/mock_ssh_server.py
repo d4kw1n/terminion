@@ -160,6 +160,14 @@ def run_command(proc, line: str) -> None:
         out(proc, "Linux terminion 6.11.0-test #1 SMP x86_64 GNU/Linux\r\n")
     elif name == "clear":
         out(proc, "\x1b[2J\x1b[H")
+    elif name == "sh":
+        out(
+            proc,
+            'PRETTY_NAME="Ubuntu 24.04.1 LTS"\r\n'
+            'NAME="Ubuntu"\r\n'
+            'VERSION_ID="24.04"\r\n'
+            'VERSION_CODENAME=noble\r\n',
+        )
     elif name == "cat":
         target = ROOT / rest.strip().lstrip("/")
         try:

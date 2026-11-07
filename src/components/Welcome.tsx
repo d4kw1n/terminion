@@ -5,7 +5,7 @@ export function Welcome() {
   const openHostEditor = useStore((s) => s.openHostEditor);
   const importSshConfig = useStore((s) => s.importSshConfig);
   const setPaletteOpen = useStore((s) => s.setPaletteOpen);
-  const version = useStore((s) => s.appInfo?.version ?? "0.1.0");
+  const version = useStore((s) => s.appInfo?.version ?? "0.1.1");
 
   return (
     <div className="welcome welcome--minimal">
