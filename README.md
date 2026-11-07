@@ -10,8 +10,8 @@ to Termius, built with Rust + Tauri and a GPU-rendered terminal.
 The latest private build is available under **Releases**:
 [github.com/d4kw1n/terminion/releases/latest](https://github.com/d4kw1n/terminion/releases/latest)
 
-- `Terminion_0.1.1_x64-setup.exe` — per-user installer.
-- `Terminion_0.1.1_portable.exe` — portable executable.
+- `Terminion_0.1.2_x64-setup.exe` — per-user installer.
+- `Terminion_0.1.2_portable.exe` — portable executable.
 - `SHA256SUMS.txt` — checksums for both files.
 - `Terminion-CodeSigning.cer` — public certificate for the local self-signed signature.
 

@@ -145,15 +145,6 @@ export async function mountTerminal(
     return Boolean(selection);
   };
 
-  const pasteClipboard = async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      if (text) term.paste(text);
-    } catch {
-      /* clipboard access can be denied */
-    }
-  };
-
   term.onData(queueInput);
   term.onBell(() => {
     if (!useStore.getState().settings.bell) return;
@@ -193,18 +184,14 @@ export async function mountTerminal(
       copySelection();
       return false;
     }
-    if (ctrl && event.shiftKey && is("KeyV", "v")) {
-      void pasteClipboard();
-      return false;
-    }
+    // Let the browser deliver one native paste event; xterm handles it.
+    // Reading the clipboard here as well would insert the text twice.
+    if (ctrl && event.shiftKey && is("KeyV", "v")) return false;
     if (ctrl && !event.shiftKey && is("KeyC", "c") && term.hasSelection()) {
       copySelection();
       return false;
     }
-    if (ctrl && !event.shiftKey && is("KeyV", "v")) {
-      void pasteClipboard();
-      return false;
-    }
+    if (ctrl && !event.shiftKey && is("KeyV", "v")) return false;
     if (ctrl && !event.shiftKey && is("KeyF", "f")) {
       options.onSearch?.();
       return false;

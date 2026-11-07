@@ -330,7 +330,7 @@ export function SettingsPage() {
           <div className="about-grid">
             <div className="about-stat">
               <span className="about-label">Version</span>
-              <span className="about-value">{appInfo?.version ?? "0.1.1"}</span>
+              <span className="about-value">{appInfo?.version ?? "0.1.2"}</span>
             </div>
             <div className="about-stat">
               <span className="about-label">Platform</span>
