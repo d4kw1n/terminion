@@ -5,6 +5,15 @@ to Termius, built with Rust + Tauri and a GPU-rendered terminal.
 
 ![Terminion terminal](docs/terminal.png)
 
+## Download
+
+The latest private build is available under **Releases**:
+[github.com/d4kw1n/terminion/releases/latest](https://github.com/d4kw1n/terminion/releases/latest)
+
+- `Terminion_0.1.0_x64-setup.exe` — per-user installer.
+- `Terminion_0.1.0_portable.exe` — portable executable.
+- `SHA256SUMS.txt` — checksums for both files.
+
 ## Why Terminion
 
 - **Light on memory.** Tauri uses the WebView2 runtime already installed on Windows
