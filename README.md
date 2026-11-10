@@ -10,8 +10,8 @@ to Termius, built with Rust + Tauri and a GPU-rendered terminal.
 The latest private build is available under **Releases**:
 [github.com/d4kw1n/terminion/releases/latest](https://github.com/d4kw1n/terminion/releases/latest)
 
-- `Terminion_0.1.3_x64-setup.exe` — per-user installer.
-- `Terminion_0.1.3_portable.exe` — portable executable.
+- `Terminion_0.1.4_x64-setup.exe` — per-user installer.
+- `Terminion_0.1.4_portable.exe` — portable executable.
 - `SHA256SUMS.txt` — checksums for both files.
 - `Terminion-CodeSigning.cer` — public certificate for the local self-signed signature.
 
@@ -255,18 +255,26 @@ protocol trade-offs, is available in [docs/SECURITY-REVIEW.md](docs/SECURITY-REV
 
 ## Performance
 
-Measured on the release build (Windows 11, 1280×864 window, x64). “Private working
-set” is the memory figure Task Manager reports, summed over the app's process tree:
+Measured on the release build (Windows 11, x64). “Private working set” is the memory
+figure Task Manager reports, summed over the app's process tree. WebView2 runtime
+versions, window size and the renderer all affect these numbers:
 
 | State | `terminion.exe` | WebView2 helpers | Total private working set |
 | --- | --- | --- | --- |
-| Empty workspace | ~4 MB | ~133 MB | ~137 MB |
+| Empty workspace (hardware acceleration) | ~4 MB | ~175 MB | ~179 MB |
+| Empty workspace (low memory mode) | ~4 MB | ~77 MB | ~81 MB |
 | Five content tabs open | ~4 MB | ~206 MB | ~210 MB |
 
 The native Rust process is deliberately small; the system WebView2 runtime accounts
 for most of the footprint. Idle SSH sessions cost almost nothing because the backend
-only exchanges keepalives. Release artifacts: `terminion.exe` ≈ 7.6 MB and the NSIS
+only exchanges keepalives. Release artifacts: `terminion.exe` ≈ 7.7 MB and the NSIS
 installer ≈ 2.9 MB.
+
+WebView2 creates a GPU process whose private working set can grow with the window size
+and terminal rendering. **Settings → Terminal → Low memory mode** starts WebView2 with
+`--disable-gpu` and disables terminal WebGL, which cut an empty workspace from about
+179 MB to 81 MB on the test machine. It requires a restart; software rendering uses
+more CPU and is slower for very large terminal output, so it is off by default.
 
 A compact **RAM / CPU** readout is available in the top-right corner of the tab bar.
 RAM is the private working set of the whole process tree (Terminion + WebView2), and

@@ -161,6 +161,7 @@ export interface AppInfo {
   version: string;
   dataDir: string;
   platform: string;
+  lowMemory: boolean;
 }
 
 export interface ImportResult {

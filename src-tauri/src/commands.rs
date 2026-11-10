@@ -828,6 +828,21 @@ pub fn get_app_info(state: State<'_, AppState>) -> AppInfo {
         version: env!("CARGO_PKG_VERSION").to_string(),
         data_dir: state.data_dir.display().to_string(),
         platform: format!("{} {}", std::env::consts::OS, std::env::consts::ARCH),
+        low_memory: crate::low_memory_marker_path().exists(),
+    }
+}
+
+#[tauri::command]
+pub fn set_low_memory(enabled: bool) -> Result<(), String> {
+    let path = crate::low_memory_marker_path();
+    if enabled {
+        std::fs::write(&path, b"1")
+            .map_err(|e| format!("Could not enable low memory mode: {e}"))
+    } else if path.exists() {
+        std::fs::remove_file(&path)
+            .map_err(|e| format!("Could not disable low memory mode: {e}"))
+    } else {
+        Ok(())
     }
 }
 

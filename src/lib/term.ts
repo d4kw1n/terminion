@@ -74,7 +74,8 @@ export async function mountTerminal(
   term.loadAddon(search);
   term.open(container);
 
-  if (settings.renderer === "auto" || settings.renderer === "webgl") {
+  const lowMemory = useStore.getState().appInfo?.lowMemory ?? false;
+  if (!lowMemory && (settings.renderer === "auto" || settings.renderer === "webgl")) {
     try {
       const webgl = new WebglAddon();
       webgl.onContextLoss(() => {

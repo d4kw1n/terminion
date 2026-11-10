@@ -369,4 +369,5 @@ pub struct AppInfo {
     pub version: String,
     pub data_dir: String,
     pub platform: String,
+    pub low_memory: bool,
 }

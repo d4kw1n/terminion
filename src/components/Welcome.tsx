@@ -6,7 +6,7 @@ export function Welcome() {
   const importSshConfig = useStore((s) => s.importSshConfig);
   const openDefaultLocalShell = useStore((s) => s.openDefaultLocalShell);
   const setPaletteOpen = useStore((s) => s.setPaletteOpen);
-  const version = useStore((s) => s.appInfo?.version ?? "0.1.3");
+  const version = useStore((s) => s.appInfo?.version ?? "0.1.4");
 
   return (
     <div className="welcome welcome--minimal">

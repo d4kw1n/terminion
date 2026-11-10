@@ -32,8 +32,28 @@ pub struct AppState {
     pub data_dir: PathBuf,
 }
 
+/// Marker read before WebView2 starts. Kept outside SQLite so it can be
+/// checked from the process entry point, before Tauri initializes.
+pub fn low_memory_marker_path() -> PathBuf {
+    dirs::data_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("com.terminion.app")
+        .join("low-memory")
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    if low_memory_marker_path().exists() {
+        let mut args = std::env::var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS").unwrap_or_default();
+        if !args.split_whitespace().any(|arg| arg == "--disable-gpu") {
+            if !args.is_empty() {
+                args.push(' ');
+            }
+            args.push_str("--disable-gpu");
+            std::env::set_var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", args);
+        }
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
@@ -180,6 +200,7 @@ pub fn run() {
             commands::save_settings,
             commands::get_paths,
             commands::get_app_info,
+            commands::set_low_memory,
             commands::process_stats,
             commands::reveal_path,
             commands::open_folder,

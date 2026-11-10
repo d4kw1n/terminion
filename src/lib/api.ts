@@ -228,6 +228,7 @@ export const api = {
   saveSettings: (settings: Settings) => invoke<void>("save_settings", { settings }),
   getPaths: () => invoke<Paths>("get_paths"),
   getAppInfo: () => invoke<AppInfo>("get_app_info"),
+  setLowMemory: (enabled: boolean) => invoke<void>("set_low_memory", { enabled }),
   processStats: () => invoke<ProcessStats>("process_stats"),
   revealPath: (path: string) => invoke<void>("reveal_path", { path }),
   openFolder: (path: string) => invoke<void>("open_folder", { path }),

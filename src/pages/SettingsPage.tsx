@@ -73,6 +73,26 @@ export function SettingsPage() {
     );
   };
 
+  const setLowMemory = async (enabled: boolean) => {
+    try {
+      await api.setLowMemory(enabled);
+      useStore.setState((state) => ({
+        appInfo: state.appInfo ? { ...state.appInfo, lowMemory: enabled } : state.appInfo,
+      }));
+      addToast({
+        type: "info",
+        title: enabled ? "Low memory mode enabled" : "Low memory mode disabled",
+        message: "Restart Terminion to apply the rendering change.",
+      });
+    } catch (err) {
+      addToast({
+        type: "error",
+        title: "Could not change memory mode",
+        message: String(err),
+      });
+    }
+  };
+
   return (
     <div className="page settings-page">
       <header className="page-head">
@@ -261,6 +281,15 @@ export function SettingsPage() {
               <option value="dom">Canvas / DOM</option>
             </select>
           </Row>
+          <Row
+            label="Low memory mode"
+            description="Turns off WebView2 GPU acceleration and terminal WebGL. Restart required; saves a large amount of RAM, but rendering uses more CPU."
+          >
+            <Switch
+              checked={Boolean(appInfo?.lowMemory)}
+              onChange={(value) => void setLowMemory(value)}
+            />
+          </Row>
           <Row label="Terminal bell" description="Audible bell on BEL characters.">
             <Switch
               checked={settings.bell}
@@ -330,7 +359,7 @@ export function SettingsPage() {
           <div className="about-grid">
             <div className="about-stat">
               <span className="about-label">Version</span>
-              <span className="about-value">{appInfo?.version ?? "0.1.3"}</span>
+              <span className="about-value">{appInfo?.version ?? "0.1.4"}</span>
             </div>
             <div className="about-stat">
               <span className="about-label">Platform</span>
