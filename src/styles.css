@@ -869,6 +869,17 @@ code {
   font-size: 9.5px;
 }
 
+.avatar--local {
+  color: var(--accent);
+  text-shadow: none;
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--accent) 30%, var(--surface)),
+    color-mix(in srgb, var(--accent) 10%, var(--surface))
+  );
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
 .avatar-live {
   position: absolute;
   right: -2px;

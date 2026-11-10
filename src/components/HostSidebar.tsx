@@ -30,6 +30,8 @@ export function HostSidebar() {
   const setSearch = useStore((s) => s.setSearch);
   const toggleGroup = useStore((s) => s.toggleGroup);
   const openTerminal = useStore((s) => s.openTerminal);
+  const localShells = useStore((s) => s.localShells);
+  const openLocalShell = useStore((s) => s.openLocalShell);
   const connectHost = useStore((s) => s.connectHost);
   const openFileBrowser = useStore((s) => s.openFileBrowser);
   const openHostEditor = useStore((s) => s.openHostEditor);
@@ -67,6 +69,21 @@ export function HostSidebar() {
   }, [hosts, query]);
 
   const quick = parseQuickConnect(search);
+
+  const openShellMenu = (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    const rect = event.currentTarget.getBoundingClientRect();
+    const items: MenuItem[] =
+      localShells.length > 0
+        ? localShells.map((shell) => ({
+            label: shell.label,
+            icon: "terminal" as const,
+            hint: shell.command,
+            onClick: () => openLocalShell(shell.id),
+          }))
+        : [{ label: "No local shell found", disabled: true }];
+    setMenu({ x: rect.left, y: rect.top - 8, items });
+  };
 
   const favorites = filtered.filter((h) => h.favorite);
   const byGroup = useMemo(() => {
@@ -488,6 +505,14 @@ export function HostSidebar() {
         <button className="sidebar-add" onClick={() => openHostEditor()}>
           <Icon name="plus" size={15} />
           New host
+        </button>
+        <button
+          className="icon-btn"
+          title="Local shell (Ctrl+Shift+T)"
+          aria-label="Local shell"
+          onClick={openShellMenu}
+        >
+          <Icon name="terminal" size={16} />
         </button>
         <button
           className="icon-btn"

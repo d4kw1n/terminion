@@ -38,6 +38,12 @@ export interface HostOsDetected {
   os: string;
 }
 
+export interface LocalShellInfo {
+  id: string;
+  label: string;
+  command: string;
+}
+
 export interface HostInput {
   id: number | null;
   label: string;
@@ -288,6 +294,8 @@ export interface Tab {
   title: string;
   subtitle?: string;
   hostId?: number;
+  /// Set for a terminal backed by a local PTY instead of an SSH host.
+  localShell?: string;
   /// User-visible tab label; falls back to the title/host label when absent.
   customTitle?: string;
   groupId?: string;

@@ -4,8 +4,9 @@ import { useStore } from "../store";
 export function Welcome() {
   const openHostEditor = useStore((s) => s.openHostEditor);
   const importSshConfig = useStore((s) => s.importSshConfig);
+  const openDefaultLocalShell = useStore((s) => s.openDefaultLocalShell);
   const setPaletteOpen = useStore((s) => s.setPaletteOpen);
-  const version = useStore((s) => s.appInfo?.version ?? "0.1.2");
+  const version = useStore((s) => s.appInfo?.version ?? "0.1.3");
 
   return (
     <div className="welcome welcome--minimal">
@@ -24,6 +25,11 @@ export function Welcome() {
           <button className="btn" onClick={() => void importSshConfig()}>
             <Icon name="download" size={16} />
             Import SSH config
+          </button>
+          <button className="btn" onClick={openDefaultLocalShell}>
+            <Icon name="terminal" size={16} />
+            Local shell
+            <kbd className="btn-kbd">Ctrl Shift T</kbd>
           </button>
           <button className="btn" onClick={() => setPaletteOpen(true)}>
             <Icon name="command" size={16} />

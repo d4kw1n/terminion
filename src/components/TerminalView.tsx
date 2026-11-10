@@ -38,10 +38,16 @@ function TerminalPane({
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!ref.current || !tab.hostId) return;
+    if (!ref.current) return;
+    const source = tab.localShell
+      ? ({ kind: "local", shellId: tab.localShell } as const)
+      : tab.hostId
+        ? ({ kind: "ssh", hostId: tab.hostId } as const)
+        : null;
+    if (!source) return;
     let disposed = false;
     const element = ref.current;
-    void mountTerminal(tab.id, tab.hostId, element, { onSearch }).then((handle) => {
+    void mountTerminal(tab.id, source, element, { onSearch }).then((handle) => {
       if (disposed) {
         handle.dispose();
       } else if (active) {
@@ -96,6 +102,7 @@ export function TerminalView({
   const snippets = useStore((s) => s.snippets);
   const settings = useStore((s) => s.settings);
   const openSftp = useStore((s) => s.openSftp);
+  const openDefaultLocalShell = useStore((s) => s.openDefaultLocalShell);
   const arrangeSplit = useStore((s) => s.arrangeSplit);
   const openHostEditor = useStore((s) => s.openHostEditor);
   const openPage = useStore((s) => s.openPage);
@@ -110,6 +117,7 @@ export function TerminalView({
   const searchRef = useRef<HTMLInputElement>(null);
 
   const host = hosts.find((h) => h.id === tab.hostId) ?? null;
+  const isLocal = Boolean(tab.localShell);
   const theme = terminalTheme(settings.terminalTheme);
   const color = host ? hostColor(host) : "#7c5cff";
 
@@ -195,74 +203,83 @@ export function TerminalView({
     });
   };
 
-  const terminalMenu = (): MenuItem[] => [
-    {
-      label: "Copy",
-      icon: "copy",
-      hint: "Ctrl Shift C",
-      onClick: copySelection,
-    },
-    {
-      label: "Paste",
-      icon: "clipboard",
-      hint: "Ctrl V",
-      onClick: () => void pasteClipboard(),
-    },
-    {
-      label: "Select all",
-      icon: "check",
-      onClick: () => terminalRegistry.get(tab.id)?.term.selectAll(),
-    },
-    {
-      label: "Search",
-      icon: "search",
-      hint: "Ctrl F",
-      onClick: () => setSearchOpen(true),
-    },
-    { separator: true },
-    {
-      label: "Clear buffer",
-      icon: "trash",
-      onClick: () => terminalRegistry.get(tab.id)?.term.clear(),
-    },
-    {
-      label: filesOpen ? "Hide files panel" : "Show files panel",
-      icon: "folder",
-      onClick: toggleFiles,
-    },
-    {
-      label: "Open SFTP in new tab",
-      icon: "folder",
-      onClick: () => tab.hostId && openSftp(tab.hostId),
-    },
-    ...(splitMode
-      ? [
-          {
-            label: "Layout: 2 top + 1 bottom",
-            icon: "menu" as const,
-            onClick: () => arrangeSplit("two-top-one-bottom"),
-          },
-        ]
-      : []),
-    {
-      label: "Edit host",
-      icon: "edit",
-      onClick: () => host && openHostEditor(host),
-    },
-    { separator: true },
-    {
-      label: "Reconnect",
-      icon: "refresh",
-      disabled: !tab.sessionId,
-      onClick: reconnect,
-    },
-    {
+  const terminalMenu = (): MenuItem[] => {
+    const items: MenuItem[] = [
+      {
+        label: "Copy",
+        icon: "copy",
+        hint: "Ctrl Shift C",
+        onClick: copySelection,
+      },
+      {
+        label: "Paste",
+        icon: "clipboard",
+        hint: "Ctrl V",
+        onClick: () => void pasteClipboard(),
+      },
+      {
+        label: "Select all",
+        icon: "check",
+        onClick: () => terminalRegistry.get(tab.id)?.term.selectAll(),
+      },
+      {
+        label: "Search",
+        icon: "search",
+        hint: "Ctrl F",
+        onClick: () => setSearchOpen(true),
+      },
+      { separator: true },
+      {
+        label: "Clear buffer",
+        icon: "trash",
+        onClick: () => terminalRegistry.get(tab.id)?.term.clear(),
+      },
+    ];
+    if (host) {
+      items.push(
+        {
+          label: filesOpen ? "Hide files panel" : "Show files panel",
+          icon: "folder",
+          onClick: toggleFiles,
+        },
+        {
+          label: "Open SFTP in new tab",
+          icon: "folder",
+          onClick: () => openSftp(host.id),
+        },
+      );
+    }
+    if (splitMode) {
+      items.push({
+        label: "Layout: 2 top + 1 bottom",
+        icon: "menu",
+        onClick: () => arrangeSplit("two-top-one-bottom"),
+      });
+    }
+    if (host) {
+      items.push({
+        label: "Edit host",
+        icon: "edit",
+        onClick: () => openHostEditor(host),
+      });
+    }
+    items.push({ separator: true });
+    if (!isLocal) {
+      items.push({
+        label: "Reconnect",
+        icon: "refresh",
+        disabled: !tab.sessionId,
+        onClick: reconnect,
+      });
+    }
+    items.push({
       label: "Close tab",
       icon: "x",
       danger: true,
       onClick: () => closeTab(tab.id),
-    },
-  ];
+    });
+    return items;
+  };
 
   const snippetItems = (): MenuItem[] => {
     const items: MenuItem[] = snippets.slice(0, 9).map((snippet) => ({
@@ -315,8 +332,8 @@ export function TerminalView({
               {initials(host.label)}
             </span>
           ) : (
-            <span className="avatar avatar--sm" style={{ background: "#374151" }}>
-              ?
+            <span className="avatar avatar--sm avatar--local">
+              <Icon name="terminal" size={14} />
             </span>
           )}
           <div className="term-titles">
@@ -346,7 +363,7 @@ export function TerminalView({
         </div>
 
         <div className="term-actions">
-          {tab.status === "disconnected" && (
+          {!isLocal && tab.status === "disconnected" && (
             <button className="term-action term-action--accent" onClick={reconnect}>
               <Icon name="refresh" size={14} />
               Reconnect
@@ -366,14 +383,15 @@ export function TerminalView({
           >
             <Icon name="search" size={15} />
           </button>
-          <button
-            className={`term-action ${filesOpen ? "term-action--accent" : ""}`}
-            title={filesOpen ? "Hide SFTP panel" : "Show SFTP panel"}
-            disabled={!tab.hostId}
-            onClick={toggleFiles}
-          >
-            <Icon name="folder" size={15} />
-          </button>
+          {host && (
+            <button
+              className={`term-action ${filesOpen ? "term-action--accent" : ""}`}
+              title={filesOpen ? "Hide SFTP panel" : "Show SFTP panel"}
+              onClick={toggleFiles}
+            >
+              <Icon name="folder" size={15} />
+            </button>
+          )}
           {splitMode && onUnsplit && (
             <button
               className="term-action"
@@ -446,7 +464,7 @@ export function TerminalView({
           </div>
         )}
 
-        {tab.status === "reconnecting" && (
+        {!isLocal && tab.status === "reconnecting" && (
           <div className="reconnect-banner">
             <Icon name="loader" size={15} className="spin" />
             <div className="reconnect-text">
@@ -467,23 +485,42 @@ export function TerminalView({
             <div className="term-overlay-card">
               <div className="overlay-icon">
                 <Icon
-                  name={tab.error?.includes("Authentication") ? "lock" : "wifi-off"}
+                  name={
+                    isLocal
+                      ? "terminal"
+                      : tab.error?.includes("Authentication")
+                        ? "lock"
+                        : "wifi-off"
+                  }
                   size={22}
                 />
               </div>
               <h3>
-                {tab.error?.includes("Authentication")
-                  ? "Authentication failed"
-                  : "Session disconnected"}
+                {isLocal
+                  ? "Local shell ended"
+                  : tab.error?.includes("Authentication")
+                    ? "Authentication failed"
+                    : "Session disconnected"}
               </h3>
-              <p>{tab.error || "The connection to this host is closed."}</p>
+              <p>
+                {isLocal
+                  ? "The local shell process has exited."
+                  : tab.error || "The connection to this host is closed."}
+              </p>
               <div className="overlay-actions">
-                <button className="btn btn-primary" onClick={reconnect}>
-                  <Icon name="refresh" size={14} /> Reconnect
-                </button>
+                {!isLocal && (
+                  <button className="btn btn-primary" onClick={reconnect}>
+                    <Icon name="refresh" size={14} /> Reconnect
+                  </button>
+                )}
                 {host && (
                   <button className="btn" onClick={() => openHostEditor(host)}>
                     <Icon name="edit" size={14} /> Edit host
+                  </button>
+                )}
+                {isLocal && (
+                  <button className="btn btn-primary" onClick={openDefaultLocalShell}>
+                    <Icon name="terminal" size={14} /> New local shell
                   </button>
                 )}
                 <button className="btn btn-ghost" onClick={() => closeTab(tab.id)}>

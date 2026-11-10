@@ -342,6 +342,14 @@ pub struct Paths {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct LocalShellInfo {
+    pub id: String,
+    pub label: String,
+    pub command: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct HostOsDetected {
     pub host_id: i64,
     pub os: String,

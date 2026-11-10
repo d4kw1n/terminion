@@ -1,7 +1,7 @@
 {
   "name": "terminion",
   "private": true,
-  "version": "0.1.2",
+  "version": "0.1.3",
   "type": "module",
   "description": "Terminion — a fast, lightweight SSH & SFTP workspace",
   "scripts": {

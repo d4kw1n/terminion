@@ -8,6 +8,7 @@ import type {
   HostInput,
   KeyEntry,
   KnownHostEntry,
+  LocalShellInfo,
   PageKind,
   Paths,
   PortForward,
@@ -92,6 +93,7 @@ interface AppStore {
   snippets: Snippet[];
   forwards: PortForward[];
   knownHosts: KnownHostEntry[];
+  localShells: LocalShellInfo[];
   runningForwards: Record<number, number>;
   settings: Settings;
   paths: Paths | null;
@@ -125,6 +127,8 @@ interface AppStore {
   refreshKnownHosts: () => Promise<void>;
 
   openTerminal: (hostId: number, activate?: boolean) => string | null;
+  openLocalShell: (shellId: string, activate?: boolean) => string | null;
+  openDefaultLocalShell: () => void;
   openSftp: (hostId: number) => void;
   openFileBrowser: (hostId: number) => void;
   connectHost: (hostId: number) => void;
@@ -225,6 +229,7 @@ export const useStore = create<AppStore>((set, get) => ({
   snippets: [],
   forwards: [],
   knownHosts: [],
+  localShells: [],
   runningForwards: {},
   settings: DEFAULT_SETTINGS,
   paths: null,
@@ -250,19 +255,31 @@ export const useStore = create<AppStore>((set, get) => ({
 
   bootstrap: async () => {
     try {
-      const [hosts, groups, keys, snippets, forwards, knownHosts, settings, paths, appInfo, running] =
-        await Promise.all([
-          api.listHosts(),
-          api.listGroups(),
-          api.listKeys(),
-          api.listSnippets(),
-          api.listForwards(),
-          api.listKnownHosts(),
-          api.getSettings(),
-          api.getPaths(),
-          api.getAppInfo(),
-          api.listRunningForwards(),
-        ]);
+      const [
+        hosts,
+        groups,
+        keys,
+        snippets,
+        forwards,
+        knownHosts,
+        localShells,
+        settings,
+        paths,
+        appInfo,
+        running,
+      ] = await Promise.all([
+        api.listHosts(),
+        api.listGroups(),
+        api.listKeys(),
+        api.listSnippets(),
+        api.listForwards(),
+        api.listKnownHosts(),
+        api.listLocalShells(),
+        api.getSettings(),
+        api.getPaths(),
+        api.getAppInfo(),
+        api.listRunningForwards(),
+      ]);
       const runningForwards: Record<number, number> = {};
       for (const entry of running) runningForwards[entry.id] = entry.boundPort;
       applyTheme(settings);
@@ -273,6 +290,7 @@ export const useStore = create<AppStore>((set, get) => ({
         snippets,
         forwards,
         knownHosts,
+        localShells,
         settings,
         paths,
         appInfo,
@@ -333,6 +351,39 @@ export const useStore = create<AppStore>((set, get) => ({
       lastTerminalId: activate ? id : state.lastTerminalId,
     }));
     return id;
+  },
+
+  openLocalShell: (shellId, activate = true) => {
+    const shell = get().localShells.find((item) => item.id === shellId);
+    if (!shell) return null;
+    const id = crypto.randomUUID();
+    const tab: Tab = {
+      id,
+      kind: "terminal",
+      title: shell.label,
+      subtitle: `Local shell · ${shell.command}`,
+      localShell: shell.id,
+      status: "connecting",
+    };
+    set((state) => ({
+      tabs: [...state.tabs, tab],
+      activeTabId: activate ? id : state.activeTabId,
+      lastTerminalId: activate ? id : state.lastTerminalId,
+    }));
+    return id;
+  },
+
+  openDefaultLocalShell: () => {
+    const shell = get().localShells[0];
+    if (!shell) {
+      get().addToast({
+        type: "warning",
+        title: "No local shell found",
+        message: "Install PowerShell, Command Prompt or WSL and try again.",
+      });
+      return;
+    }
+    get().openLocalShell(shell.id);
   },
 
   openSftp: (hostId) => {
@@ -398,8 +449,9 @@ export const useStore = create<AppStore>((set, get) => ({
     ) {
       state.askConfirm({
         title: "Close this session?",
-        message:
-          "The connection will be closed. Anything running in this terminal will keep running on the server.",
+        message: tab.localShell
+          ? "The local shell process will be terminated."
+          : "The connection will be closed. Anything running in this terminal will keep running on the server.",
         confirmLabel: "Close session",
         danger: true,
         onConfirm: () => get().closeTab(tabId, true),

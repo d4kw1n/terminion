@@ -36,7 +36,7 @@ import { SnippetsPage } from "./pages/SnippetsPage";
 function probeSessions() {
   const state = useStore.getState();
   for (const tab of state.tabs) {
-    if (tab.kind === "terminal" && tab.sessionId) {
+    if (tab.kind === "terminal" && tab.sessionId && !tab.localShell) {
       api.terminalProbe(tab.sessionId).catch(() => {});
     }
   }
@@ -339,6 +339,11 @@ export default function App() {
           ? (index - 1 + tabs.length) % tabs.length
           : (index + 1) % tabs.length;
         store.setActiveTab(tabs[next].id);
+        return;
+      }
+      if (is("KeyT", "t") && event.shiftKey) {
+        event.preventDefault();
+        store.openDefaultLocalShell();
         return;
       }
       if (is("KeyW", "w") && store.activeTabId) {

@@ -473,14 +473,34 @@ pub fn open_terminal(
 }
 
 #[tauri::command]
+pub fn list_local_shells() -> Vec<LocalShellInfo> {
+    crate::local::LocalShellManager::list_shells()
+}
+
+#[tauri::command]
+pub fn open_local_shell(
+    state: State<'_, AppState>,
+    shell_id: String,
+    cols: u16,
+    rows: u16,
+    on_event: Channel<TerminalEvent>,
+) -> Result<String, String> {
+    state.local.open(&shell_id, cols, rows, on_event)
+}
+
+#[tauri::command]
 pub fn terminal_write(
     state: State<'_, AppState>,
     session_id: String,
     data: String,
 ) -> Result<(), String> {
-    state
-        .terminals
-        .send(&session_id, SessionCommand::Write(data.into_bytes()))
+    if state.terminals.contains(&session_id) {
+        state
+            .terminals
+            .send(&session_id, SessionCommand::Write(data.into_bytes()))
+    } else {
+        state.local.write(&session_id, data.into_bytes())
+    }
 }
 
 #[tauri::command]
@@ -490,27 +510,50 @@ pub fn terminal_resize(
     cols: u16,
     rows: u16,
 ) -> Result<(), String> {
-    state.terminals.send(
-        &session_id,
-        SessionCommand::Resize(cols as u32, rows as u32),
-    )
+    if state.terminals.contains(&session_id) {
+        state.terminals.send(
+            &session_id,
+            SessionCommand::Resize(cols as u32, rows as u32),
+        )
+    } else {
+        state.local.resize(&session_id, cols, rows)
+    }
 }
 
 #[tauri::command]
 pub fn terminal_reconnect(state: State<'_, AppState>, session_id: String) -> Result<(), String> {
-    state.terminals.send(&session_id, SessionCommand::Reconnect)
+    if state.terminals.contains(&session_id) {
+        state.terminals.send(&session_id, SessionCommand::Reconnect)
+    } else if state.local.contains(&session_id) {
+        Ok(())
+    } else {
+        Err("This session is no longer available".into())
+    }
 }
 
 #[tauri::command]
 pub fn terminal_probe(state: State<'_, AppState>, session_id: String) -> Result<(), String> {
-    state.terminals.send(&session_id, SessionCommand::Probe)
+    if state.terminals.contains(&session_id) {
+        state.terminals.send(&session_id, SessionCommand::Probe)
+    } else if state.local.contains(&session_id) {
+        Ok(())
+    } else {
+        Err("This session is no longer available".into())
+    }
 }
 
 #[tauri::command]
 pub fn terminal_close(state: State<'_, AppState>, session_id: String) -> Result<(), String> {
-    state
-        .terminals
-        .send(&session_id, SessionCommand::Disconnect)
+    if state.terminals.contains(&session_id) {
+        state
+            .terminals
+            .send(&session_id, SessionCommand::Disconnect)
+    } else if state.local.contains(&session_id) {
+        state.local.close(&session_id);
+        Ok(())
+    } else {
+        Err("This session is no longer available".into())
+    }
 }
 
 #[tauri::command]
@@ -521,9 +564,13 @@ pub fn terminal_run(
 ) -> Result<(), String> {
     let mut bytes = command.into_bytes();
     bytes.push(b'\r');
-    state
-        .terminals
-        .send(&session_id, SessionCommand::Write(bytes))
+    if state.terminals.contains(&session_id) {
+        state
+            .terminals
+            .send(&session_id, SessionCommand::Write(bytes))
+    } else {
+        state.local.write(&session_id, bytes)
+    }
 }
 
 // --------------------------------- sftp ---------------------------------

@@ -1,5 +1,6 @@
 mod commands;
 mod db;
+mod local;
 mod models;
 mod secret;
 mod ssh;
@@ -11,6 +12,7 @@ use std::sync::{Arc, Mutex};
 use tauri::Manager;
 
 use db::Db;
+use local::LocalShellManager;
 use ssh::forward::ForwardManager;
 use ssh::ftp::FtpManager;
 use ssh::sftp::SftpManager;
@@ -22,6 +24,7 @@ pub struct AppState {
     pub db: Arc<Db>,
     pub known: KnownHosts,
     pub terminals: Arc<TerminalManager>,
+    pub local: Arc<LocalShellManager>,
     pub sftp: Arc<SftpManager>,
     pub ftp: Arc<FtpManager>,
     pub forwards: Arc<ForwardManager>,
@@ -63,6 +66,7 @@ pub fn run() {
                 db,
                 known,
                 terminals,
+                local: Arc::new(LocalShellManager::new()),
                 sftp,
                 ftp,
                 forwards: forwards.clone(),
@@ -141,6 +145,8 @@ pub fn run() {
             commands::start_forward,
             commands::stop_forward,
             commands::open_terminal,
+            commands::list_local_shells,
+            commands::open_local_shell,
             commands::terminal_write,
             commands::terminal_resize,
             commands::terminal_reconnect,

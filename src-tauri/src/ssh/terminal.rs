@@ -132,6 +132,10 @@ impl TerminalManager {
             .map_err(|_| "This session has ended".to_string())
     }
 
+    pub fn contains(&self, session_id: &str) -> bool {
+        self.sessions.lock().unwrap().contains_key(session_id)
+    }
+
     pub fn host_of(&self, session_id: &str) -> Option<i64> {
         self.sessions
             .lock()

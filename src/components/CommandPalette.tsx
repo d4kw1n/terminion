@@ -22,6 +22,7 @@ export function CommandPalette() {
   const open = useStore((s) => s.paletteOpen);
   const setOpen = useStore((s) => s.setPaletteOpen);
   const hosts = useStore((s) => s.hosts);
+  const localShells = useStore((s) => s.localShells);
   const snippets = useStore((s) => s.snippets);
   const tabs = useStore((s) => s.tabs);
   const activeTabId = useStore((s) => s.activeTabId);
@@ -73,6 +74,15 @@ export function CommandPalette() {
 
   const items = useMemo<PaletteItem[]>(() => {
     const state = useStore.getState();
+    const shellActions: PaletteItem[] = localShells.map((shell, index) => ({
+      id: `local-shell-${shell.id}`,
+      kind: "action",
+      title: index === 0 ? "Open local shell" : `Local shell · ${shell.label}`,
+      subtitle: `${shell.label} · ${shell.command}`,
+      icon: "terminal",
+      hint: index === 0 ? "Ctrl Shift T" : undefined,
+      run: () => state.openLocalShell(shell.id),
+    }));
     const actions: PaletteItem[] = [
       {
         id: "new-host",
@@ -83,6 +93,7 @@ export function CommandPalette() {
         hint: "Ctrl N",
         run: () => state.openHostEditor(),
       },
+      ...shellActions,
       {
         id: "new-group",
         kind: "action",
@@ -149,7 +160,7 @@ export function CommandPalette() {
     }
 
     const activeTab = tabs.find((t) => t.id === activeTabId);
-    if (activeTab?.kind === "terminal" && activeTab.sessionId) {
+    if (activeTab?.kind === "terminal" && activeTab.sessionId && !activeTab.localShell) {
       actions.unshift({
         id: "reconnect-active",
         kind: "action",
@@ -213,7 +224,7 @@ export function CommandPalette() {
       .slice(0, 40)
       .map((entry) => entry.item);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, hosts, snippets, tabs, activeTabId, settings.theme]);
+  }, [query, hosts, localShells, snippets, tabs, activeTabId, settings.theme]);
 
   if (!open) return null;
 

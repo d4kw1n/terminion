@@ -32,9 +32,13 @@ const DIM = "\x1b[2m";
 const RED = "\x1b[38;2;255;107;129m";
 const RESET = "\x1b[0m";
 
+export type TerminalSource =
+  | { kind: "ssh"; hostId: number }
+  | { kind: "local"; shellId: string };
+
 export async function mountTerminal(
   tabId: string,
-  hostId: number,
+  source: TerminalSource,
   container: HTMLElement,
   options: { onSearch?: () => void; onReady?: () => void } = {},
 ): Promise<TermHandle> {
@@ -309,7 +313,10 @@ export async function mountTerminal(
   requestAnimationFrame(fitNow);
 
   try {
-    const stream = await api.openTerminal(hostId, term.cols, term.rows, onEvent);
+    const stream =
+      source.kind === "local"
+        ? await api.openLocalShell(source.shellId, term.cols, term.rows, onEvent)
+        : await api.openTerminal(source.hostId, term.cols, term.rows, onEvent);
     sessionId = stream.sessionId;
     channel = stream.channel;
     handle.sessionId = sessionId;
@@ -319,6 +326,10 @@ export async function mountTerminal(
       return handle;
     }
     useStore.getState().patchTab(tabId, { sessionId });
+    // The opening fit can happen before the session id exists, so send the
+    // current size once explicitly and fit again on the next frame.
+    void api.terminalResize(sessionId, term.cols, term.rows).catch(() => {});
+    requestAnimationFrame(fitNow);
     flushInput();
     options.onReady?.();
   } catch (err) {

@@ -10,8 +10,8 @@ to Termius, built with Rust + Tauri and a GPU-rendered terminal.
 The latest private build is available under **Releases**:
 [github.com/d4kw1n/terminion/releases/latest](https://github.com/d4kw1n/terminion/releases/latest)
 
-- `Terminion_0.1.2_x64-setup.exe` — per-user installer.
-- `Terminion_0.1.2_portable.exe` — portable executable.
+- `Terminion_0.1.3_x64-setup.exe` — per-user installer.
+- `Terminion_0.1.3_portable.exe` — portable executable.
 - `SHA256SUMS.txt` — checksums for both files.
 - `Terminion-CodeSigning.cer` — public certificate for the local self-signed signature.
 
@@ -53,6 +53,10 @@ only if you trust it. SmartScreen may still warn because the certificate is self
 ### Terminals
 
 - Multiple tabs, each a real PTY on the remote machine.
+- **Local shells:** open **PowerShell**, **Command Prompt**, **WSL** or the Unix login
+  shell in a normal terminal tab. Launch from the terminal button in the sidebar,
+  `Ctrl+Shift+T`, the command palette, or the welcome screen. The shell starts in your
+  home directory and inherits the current environment; closing the tab terminates it.
 - xterm.js with the WebGL renderer, 256-color truecolor, and selectable themes
   (Terminion, Tokyo Night, Catppuccin, Nord, Gruvbox, Paper Light).
 - Search in scrollback (`Ctrl+F`), configurable font, size, cursor, and scrollback.
@@ -144,6 +148,7 @@ Authentication errors and host-key mismatches are treated as fatal and do not lo
 | `Ctrl+F` | Find in the active terminal |
 | `Ctrl+Tab` / `Ctrl+Shift+Tab` | Next / previous tab |
 | `Ctrl+W` | Close the active tab |
+| `Ctrl+Shift+T` | Open a local shell |
 | `Ctrl+Shift+C` | Copy terminal selection |
 | `Ctrl+V` / `Ctrl+Shift+V` | Paste into terminal |
 | `/` | Focus host search |
@@ -160,6 +165,7 @@ Authentication errors and host-key mismatches are treated as fatal and do not lo
 │  Rust backend (Tauri 2)                                      │
 │                                                              │
 │  TerminalManager ── PTY channels, keepalive, reconnect       │
+│  LocalShellManager ── ConPTY / Unix PTY local shells         │
 │  SftpManager ────── SFTP v3, streaming transfers             │
 │  FtpManager ─────── plain FTP (RFC 959), streaming transfers │
 │  ForwardManager ─── local / remote / SOCKS5 tunnels          │
@@ -274,6 +280,7 @@ src/                    React application
   pages/                Snippets, forwards, keys, known hosts, settings
   lib/                  IPC client, xterm integration, types
 src-tauri/src/
+  local.rs              Local ConPTY / PTY shell sessions
   ssh/terminal.rs       PTY sessions, reconnect state machine
   ssh/sftp.rs           SFTP sessions and streaming transfers
   ssh/ftp.rs            Plain FTP sessions and streaming transfers

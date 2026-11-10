@@ -9,6 +9,7 @@ import type {
   ImportResult,
   KeyEntry,
   KnownHostEntry,
+  LocalShellInfo,
   Paths,
   PortForward,
   PortForwardInput,
@@ -84,6 +85,23 @@ export const api = {
     channel.onmessage = onEvent;
     const sessionId = await invoke<string>("open_terminal", {
       hostId,
+      cols,
+      rows,
+      onEvent: channel,
+    });
+    return { sessionId, channel };
+  },
+  listLocalShells: () => invoke<LocalShellInfo[]>("list_local_shells"),
+  openLocalShell: async (
+    shellId: string,
+    cols: number,
+    rows: number,
+    onEvent: (event: TerminalEvent) => void,
+  ): Promise<TerminalStream> => {
+    const channel = new Channel<TerminalEvent>();
+    channel.onmessage = onEvent;
+    const sessionId = await invoke<string>("open_local_shell", {
+      shellId,
       cols,
       rows,
       onEvent: channel,
